@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="th">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>อนุมัติคำขอ</title>
+    <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;600&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <link rel="stylesheet" href="style.css">
+    <style>
+        .request-card {
+            background: #f9f9f9;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            border-left: 5px solid #3498db;
+        }
+
+        .actions {
+            display: flex;
+            gap: 15px;
+            margin-top: 20px;
+        }
+
+        .btn-approve {
+            background-color: #2ecc71;
+            color: white;
+            flex: 1;
+            padding: 12px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+
+        .btn-reject {
+            background-color: #e74c3c;
+            color: white;
+            flex: 1;
+            padding: 12px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 50px;
+            font-size: 18px;
+            color: #666;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="container">
+        <header>
+            <h1>🛡️ พิจารณาคำขอ</h1>
+        </header>
+
+        <div id="loading" class="loading">กำลังโหลดข้อมูล...</div>
+
+        <div id="content" style="display: none;">
+            <div class="request-card">
+                <h2 id="reqType">ประเภทคำขอ</h2>
+                <p><strong>พนักงาน:</strong> <span id="empName">-</span></p>
+                <p><strong>รายละเอียด:</strong> <span id="reqDetail">-</span></p>
+                <p><strong>วันที่:</strong> <span id="reqDate">-</span></p>
+                <p><strong>สถานะปัจจุบัน:</strong> <span id="reqStatus">-</span></p>
+            </div>
+
+            <div class="form-group">
+                <label>หมายเหตุ (ถ้ามี)</label>
+                <textarea id="adminNote" rows="2" placeholder="ระบุเหตุผลการอนุมัติ/ไม่อนุมัติ..."></textarea>
+            </div>
+
+            <div class="actions">
+                <button class="btn-approve" onclick="processRequest('Approved')">✔ อนุมัติ</button>
+                <button class="btn-reject" onclick="processRequest('Rejected')">✖ ไม่อนุมัติ</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+    <script>
+        // Specific logic for Approval Page
+        const urlParams = new URLSearchParams(window.location.search);
+        const requestId = urlParams.get('id');
+
+        async function loadRequest() {
+            if (!requestId) {
+                document.getElementById('loading').innerText = "ไม่พบรหัสคำขอ (Request ID)";
+                return;
+            }
+
+            try {
+                // Reusing the fetch function from script.js logic, but we need to ensure config is loaded
+                // For simplicity, we define the fetch logic here or assume script.js has a helper
+                const response = await fetch(`${WEB_APP_URL}?action=get_request&id=${requestId}`);
+                const result = await response.json();
+
+                if (result.status === 'success') {
+                    const data = result.data;
+                    document.getElementById('reqType').innerText = data.requestType;
+                    document.getElementById('empName').innerText = data.employeeName;
+                    document.getElementById('reqDetail').innerText = data.detail;
+
+                    let dateStr = "";
+                    if (data.startDate) {
+                        dateStr = `${data.startDate} ถึง ${data.endDate}`;
+                    } else {
+                        dateStr = `เปลี่ยนจาก ${data.changeFrom} เป็น ${data.changeTo}`;
+                    }
+                    document.getElementById('reqDate').innerText = dateStr;
+                    document.getElementById('reqStatus').innerText = data.currentStatus;
+
+                    if (data.currentStatus !== 'Pending') {
+                        Swal.fire('แจ้งเตือน', `คำขอนี้ถูกดำเนินการไปแล้วเป็นสถานะ: ${data.currentStatus}`, 'info');
+                        document.querySelector('.actions').style.display = 'none';
+                    }
+
+                    document.getElementById('loading').style.display = 'none';
+                    document.getElementById('content').style.display = 'block';
+                } else {
+                    document.getElementById('loading').innerText = "ไม่พบข้อมูลคำขอ";
+                }
+            } catch (error) {
+                console.error(error);
+                document.getElementById('loading').innerText = "เกิดข้อผิดพลาดในการเชื่อมต่อ";
+            }
+        }
+
+        async function processRequest(status) {
+            const note = document.getElementById('adminNote').value;
+
+            Swal.fire({
+                title: `ยืนยันการ ${status === 'Approved' ? 'อนุมัติ' : 'ไม่อนุมัติ'}?`,
+                showCancelButton: true,
+                confirmButtonText: 'ยืนยัน',
+                cancelButtonText: 'ยกเลิก'
+            }).then(async (result) => {
+                if (result.isConfirmed) {
+                    Swal.fire({ title: 'กำลังบันทึก...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+
+                    try {
+                        await fetch(WEB_APP_URL, {
+                            method: 'POST',
+                            body: JSON.stringify({
+                                action: 'approve_request',
+                                id: requestId,
+                                status: status,
+                                adminNote: note
+                            })
+                        });
+
+                        Swal.fire('สำเร็จ', 'บันทึกสถานะเรียบร้อยแล้ว', 'success').then(() => {
+                            location.reload();
+                        });
+                    } catch (error) {
+                        Swal.fire('ผิดพลาด', 'ไม่สามารถบันทึกข้อมูลได้', 'error');
+                    }
+                }
+            });
+        }
+
+        // Initialize
+        if (typeof WEB_APP_URL !== 'undefined') {
+            loadRequest();
+        } else {
+            // Fallback if script.js hasn't loaded config yet (race condition safe-guard)
+            window.addEventListener('load', loadRequest);
+        }
+    </script>
+</body>
+
+</html>

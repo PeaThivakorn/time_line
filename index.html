@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ระบบลางาน / สลับวันหยุด</title>
+    <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;600&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<div class="container">
+    <header>
+        <h1>📝 ระบบแจ้งวันหยุด / ลางาน</h1>
+        <p>กรอกข้อมูลเพื่อส่งคำขอไปยังหัวหน้างาน</p>
+    </header>
+
+    <div class="tabs">
+        <button class="tab-btn active" onclick="openTab('leave')">📅 ขอลางาน</button>
+        <button class="tab-btn" onclick="openTab('swap')">🔄 ขอสลับวันหยุด</button>
+        <button class="tab-btn" onclick="openTab('history')">🕒 ประวัติคำขอ</button>
+    </div>
+
+    <!-- Leave Request Form -->
+    <div id="leave" class="tab-content active">
+        <form id="leaveForm">
+            <div class="form-group">
+                <label>รหัสพนักงาน</label>
+                <input type="text" name="employeeId" required placeholder="เช่น 200165">
+            </div>
+            <div class="form-group">
+                <label>ชื่อ-นามสกุล</label>
+                <input type="text" name="employeeName" required placeholder="ชื่อจริง นามสกุล">
+            </div>
+            <div class="form-group">
+                <label>Telegram Chat ID (สำหรับรับแจ้งเตือน)</label>
+                <input type="text" name="telegramChatId" placeholder="เช่น 6953656810">
+                <small><a href="https://t.me/userinfobot" target="_blank">ค้นหา Chat ID คลิกที่นี่</a></small>
+            </div>
+            <div class="form-group">
+                <label>ประเภทการลา</label>
+                <select name="leaveType" required>
+                    <option value="ลากิจ">ลากิจ</option>
+                    <option value="ลาป่วย">ลาป่วย</option>
+                    <option value="ลาพักร้อน">ลาพักร้อน</option>
+                    <option value="วันหยุดนักขัตฤกษ์">แจ้งวันหยุดนักขัตฤกษ์</option>
+                </select>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>ตั้งแต่วันที่</label>
+                    <input type="date" name="startDate" required>
+                </div>
+                <div class="form-group">
+                    <label>ถึงวันที่</label>
+                    <input type="date" name="endDate" required>
+                </div>
+            </div>
+            <div class="form-group">
+                <label>เหตุผล</label>
+                <textarea name="reason" rows="3" required></textarea>
+            </div>
+            <button type="submit" class="submit-btn">ส่งคำขอ</button>
+        </form>
+    </div>
+
+    <!-- Swap Request Form -->
+    <div id="swap" class="tab-content">
+        <form id="swapForm">
+            <div class="form-group">
+                <label>รหัสพนักงาน</label>
+                <input type="text" name="employeeId" required placeholder="เช่น 200165">
+            </div>
+            <div class="form-group">
+                <label>ชื่อ-นามสกุล</label>
+                <input type="text" name="employeeName" required placeholder="ชื่อจริง นามสกุล">
+            </div>
+            <div class="form-group">
+                <label>Telegram Chat ID</label>
+                <input type="text" name="telegramChatId" placeholder="เช่น 6953656810">
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>วันหยุดเดิม</label>
+                    <input type="date" name="changeFrom" required>
+                </div>
+                <div class="form-group">
+                    <label>ต้องการสลับไปหยุดวันที่</label>
+                    <input type="date" name="changeTo" required>
+                </div>
+            </div>
+            <div class="form-group">
+                <label>เหตุผล</label>
+                <textarea name="reason" rows="3" required></textarea>
+            </div>
+            <button type="submit" class="submit-btn">ส่งคำขอสลับวัน</button>
+        </form>
+    </div>
+
+    <!-- History Tab -->
+    <div id="history" class="tab-content">
+        <div class="form-group">
+            <label>ระบุรหัสพนักงานเพื่อดูประวัติ</label>
+            <div style="display: flex; gap: 10px;">
+                <input type="text" id="historyEmpId" placeholder="EMP001">
+                <button type="button" onclick="fetchHistory()" class="secondary-btn">ค้นหา</button>
+            </div>
+        </div>
+        <div id="historyList" class="history-list">
+            <!-- Items will be injected here -->
+            <p style="text-align:center; color:#888;">กรุณากดค้นหาเพื่อดูข้อมูล</p>
+        </div>
+    </div>
+</div>
+
+<script src="script.js"></script>
+</body>
+</html>
