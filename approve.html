@@ -90,37 +90,81 @@
         const urlParams = new URLSearchParams(window.location.search);
         const requestId = urlParams.get('id');
 
-        const note = document.getElementById('adminNote').value;
-
-        Swal.fire({
-            title: `ยืนยันการ ${status === 'Approved' ? 'อนุมัติ' : 'ไม่อนุมัติ'}?`,
-            showCancelButton: true,
-            confirmButtonText: 'ยืนยัน',
-            cancelButtonText: 'ยกเลิก'
-        }).then(async (result) => {
-            if (result.isConfirmed) {
-                Swal.fire({ title: 'กำลังบันทึก...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
-
-                try {
-                    await fetch(WEB_APP_URL, {
-                        method: 'POST',
-                        body: JSON.stringify({
-                            action: 'approve_request',
-                            id: requestId,
-                            status: status,
-                            adminNote: note
-                        })
-                    });
-
-                    Swal.fire('สำเร็จ', 'บันทึกสถานะเรียบร้อยแล้ว', 'success').then(() => {
-                        location.reload();
-                    });
-                } catch (error) {
-                    Swal.fire('ผิดพลาด', 'ไม่สามารถบันทึกข้อมูลได้', 'error');
-                }
+        async function loadRequest() {
+            if (!requestId) {
+                document.getElementById('loading').innerText = "ไม่พบรหัสคำขอ (Request ID)";
+                return;
             }
-        });
-        
+
+            try {
+                // Reusing the fetch function from script.js logic, but we need to ensure config is loaded
+                // For simplicity, we define the fetch logic here or assume script.js has a helper
+                const response = await fetch(`${WEB_APP_URL}?action=get_request&id=${requestId}`);
+                const result = await response.json();
+
+                if (result.status === 'success') {
+                    const data = result.data;
+                    document.getElementById('reqType').innerText = data.requestType;
+                    document.getElementById('empName').innerText = data.employeeName;
+                    document.getElementById('reqDetail').innerText = data.detail;
+
+                    let dateStr = "";
+                    if (data.startDate) {
+                        dateStr = `${data.startDate} ถึง ${data.endDate}`;
+                    } else {
+                        dateStr = `เปลี่ยนจาก ${data.changeFrom} เป็น ${data.changeTo}`;
+                    }
+                    document.getElementById('reqDate').innerText = dateStr;
+                    document.getElementById('reqStatus').innerText = data.currentStatus;
+
+                    if (data.currentStatus !== 'Pending') {
+                        Swal.fire('แจ้งเตือน', `คำขอนี้ถูกดำเนินการไปแล้วเป็นสถานะ: ${data.currentStatus}`, 'info');
+                        document.querySelector('.actions').style.display = 'none';
+                    }
+
+                    document.getElementById('loading').style.display = 'none';
+                    document.getElementById('content').style.display = 'block';
+                } else {
+                    document.getElementById('loading').innerText = "ไม่พบข้อมูลคำขอ";
+                }
+            } catch (error) {
+                console.error(error);
+                document.getElementById('loading').innerText = "เกิดข้อผิดพลาดในการเชื่อมต่อ";
+            }
+        }
+
+        async function processRequest(status) {
+            const note = document.getElementById('adminNote').value;
+
+            Swal.fire({
+                title: `ยืนยันการ ${status === 'Approved' ? 'อนุมัติ' : 'ไม่อนุมัติ'}?`,
+                showCancelButton: true,
+                confirmButtonText: 'ยืนยัน',
+                cancelButtonText: 'ยกเลิก'
+            }).then(async (result) => {
+                if (result.isConfirmed) {
+                    Swal.fire({ title: 'กำลังบันทึก...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+
+                    try {
+                        await fetch(WEB_APP_URL, {
+                            method: 'POST',
+                            body: JSON.stringify({
+                                action: 'approve_request',
+                                id: requestId,
+                                status: status,
+                                adminNote: note
+                            })
+                        });
+
+                        Swal.fire('สำเร็จ', 'บันทึกสถานะเรียบร้อยแล้ว', 'success').then(() => {
+                            location.reload();
+                        });
+                    } catch (error) {
+                        Swal.fire('ผิดพลาด', 'ไม่สามารถบันทึกข้อมูลได้', 'error');
+                    }
+                }
+            });
+        }
 
         // Initialize
         if (typeof WEB_APP_URL !== 'undefined') {
