@@ -109,10 +109,20 @@
                     document.getElementById('reqDetail').innerText = data.detail;
 
                     let dateStr = "";
+                    const formatDate = (d) => {
+                        if (!d) return "-";
+                        const date = new Date(d);
+                        return date.toLocaleDateString('th-TH', {
+                            year: 'numeric',
+                            month: 'long',
+                            day: 'numeric'
+                        });
+                    };
+
                     if (data.startDate) {
-                        dateStr = `${data.startDate} ถึง ${data.endDate}`;
+                        dateStr = `${formatDate(data.startDate)} ถึง ${formatDate(data.endDate)}`;
                     } else {
-                        dateStr = `เปลี่ยนจาก ${data.changeFrom} เป็น ${data.changeTo}`;
+                        dateStr = `เปลี่ยนจาก ${formatDate(data.changeFrom)} เป็น ${formatDate(data.changeTo)}`;
                     }
                     document.getElementById('reqDate').innerText = dateStr;
                     document.getElementById('reqStatus').innerText = data.currentStatus;
@@ -136,34 +146,59 @@
         async function processRequest(status) {
             const note = document.getElementById('adminNote').value;
 
-            Swal.fire({
-                title: `ยืนยันการ ${status === 'Approved' ? 'อนุมัติ' : 'ไม่อนุมัติ'}?`,
+            // Prompt for PIN
+            const { value: pin } = await Swal.fire({
+                title: 'ยืนยันตัวตน',
+                text: 'กรุณากรอกรหัส PIN เพื่อดำเนินการ',
+                input: 'password',
+                inputPlaceholder: 'รหัส PIN',
                 showCancelButton: true,
                 confirmButtonText: 'ยืนยัน',
-                cancelButtonText: 'ยกเลิก'
-            }).then(async (result) => {
-                if (result.isConfirmed) {
-                    Swal.fire({ title: 'กำลังบันทึก...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
-
-                    try {
-                        await fetch(WEB_APP_URL, {
-                            method: 'POST',
-                            body: JSON.stringify({
-                                action: 'approve_request',
-                                id: requestId,
-                                status: status,
-                                adminNote: note
-                            })
-                        });
-
-                        Swal.fire('สำเร็จ', 'บันทึกสถานะเรียบร้อยแล้ว', 'success').then(() => {
-                            location.reload();
-                        });
-                    } catch (error) {
-                        Swal.fire('ผิดพลาด', 'ไม่สามารถบันทึกข้อมูลได้', 'error');
+                cancelButtonText: 'ยกเลิก',
+                inputValidator: (value) => {
+                    if (!value) {
+                        return 'กรุณากรอกรหัส PIN!';
                     }
                 }
             });
+
+            if (pin) {
+                Swal.fire({
+                    title: `ยืนยันการ ${status === 'Approved' ? 'อนุมัติ' : 'ไม่อนุมัติ'}?`,
+                    showCancelButton: true,
+                    confirmButtonText: 'ยืนยัน',
+                    cancelButtonText: 'ยกเลิก'
+                }).then(async (result) => {
+                    if (result.isConfirmed) {
+                        Swal.fire({ title: 'กำลังบันทึก...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+
+                        try {
+                            const response = await fetch(WEB_APP_URL, {
+                                method: 'POST',
+                                body: JSON.stringify({
+                                    action: 'approve_request',
+                                    id: requestId,
+                                    status: status,
+                                    adminNote: note,
+                                    pin: pin // Send PIN to backend
+                                })
+                            });
+
+                            const result = await response.json();
+
+                            if (result.status === 'success') {
+                                Swal.fire('สำเร็จ', 'บันทึกสถานะเรียบร้อยแล้ว', 'success').then(() => {
+                                    location.reload();
+                                });
+                            } else {
+                                Swal.fire('ผิดพลาด', result.message, 'error');
+                            }
+                        } catch (error) {
+                            Swal.fire('ผิดพลาด', 'ไม่สามารถบันทึกข้อมูลได้', 'error');
+                        }
+                    }
+                });
+            }
         }
 
         // Initialize
