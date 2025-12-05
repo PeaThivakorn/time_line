@@ -1,11 +1,11 @@
 // CONFIGURATION
 // IMPORTANT: Replace this URL with your actual Google Apps Script Web App URL after deployment
-const WEB_APP_URL = "https://script.google.com/macros/s/AKfycby6dCZFlOkQRq9ASJhaMGr-kKUo6XJA1aMiwBLgbBFOuNc_TjMJAJEARldiL98w6Dr-6g/exec"; 
+const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbx3v-D7TsP_QfDXpBKRRI0LiayRUgP7PxATfXESy7f8F37q9wzcIHeGfLYrtN8d0vCbMg/exec";
 
 function openTab(tabName) {
     const contents = document.querySelectorAll('.tab-content');
     contents.forEach(c => c.classList.remove('active'));
-    
+
     const btns = document.querySelectorAll('.tab-btn');
     btns.forEach(b => b.classList.remove('active'));
 
@@ -14,13 +14,13 @@ function openTab(tabName) {
 }
 
 // Handle Leave Form Submission
-document.getElementById('leaveForm')?.addEventListener('submit', function(e) {
+document.getElementById('leaveForm')?.addEventListener('submit', function (e) {
     e.preventDefault();
     submitForm(this, 'leave');
 });
 
 // Handle Swap Form Submission
-document.getElementById('swapForm')?.addEventListener('submit', function(e) {
+document.getElementById('swapForm')?.addEventListener('submit', function (e) {
     e.preventDefault();
     submitForm(this, 'swap');
 });
@@ -33,7 +33,7 @@ async function submitForm(form, type) {
 
     const formData = new FormData(form);
     const data = Object.fromEntries(formData.entries());
-    
+
     // Add Metadata
     data.action = 'submit_request';
     data.requestType = type === 'leave' ? data.leaveType : 'สลับวันหยุด';
@@ -51,9 +51,9 @@ async function submitForm(form, type) {
             method: 'POST',
             body: JSON.stringify(data)
         });
-        
+
         const result = await response.json();
-        
+
         if (result.status === 'success') {
             Swal.fire('สำเร็จ', 'ส่งคำขอเรียบร้อยแล้ว', 'success');
             form.reset();
@@ -95,6 +95,3 @@ async function fetchHistory() {
         list.innerHTML = '<p style="text-align:center; color:red;">เกิดข้อผิดพลาดในการโหลดข้อมูล</p>';
     }
 }
-
-
-
