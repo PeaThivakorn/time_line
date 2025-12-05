@@ -1,6 +1,6 @@
 // CONFIGURATION
 // IMPORTANT: Replace this URL with your actual Google Apps Script Web App URL after deployment
-const WEB_APP_URL = "YOUR_DEPLOYED_WEB_APP_URL"; 
+const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbwrS-sHAdPqRBQF_VJd5PIiuSqcxlg2JOisAxxub1eDwAOn-a_UQfWeqKTpiDe2oA38Bw/exec"; 
 
 function openTab(tabName) {
     const contents = document.querySelectorAll('.tab-content');
