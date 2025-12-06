@@ -1,6 +1,6 @@
 // CONFIGURATION
 // IMPORTANT: Replace this URL with your actual Google Apps Script Web App URL after deployment
-const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbykruoLnjcQ1cSDoq6IadAWLY0A6OQ5bNw_p3S0FuRtIh2WOvwHtSZ5fEy_rDm60c7u9A/exec";
+const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbxdkGzP7nvTWZwSwQx2nC24vUlmx6JHP_IORrNKNCJIhFybeAerFPKuWfvPS7lmYDsKxg/exec";
 
 function openTab(tabName) {
     const contents = document.querySelectorAll('.tab-content');
@@ -95,4 +95,5 @@ async function fetchHistory() {
         list.innerHTML = '<p style="text-align:center; color:red;">เกิดข้อผิดพลาดในการโหลดข้อมูล</p>';
     }
 }
+
 
