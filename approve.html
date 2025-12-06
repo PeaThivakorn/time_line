@@ -8,7 +8,6 @@
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <link rel="stylesheet" href="style.css">
     <style>
-        /* สไตล์เฉพาะหน้าอนุมัติ */
         body { background-color: #f4f6f9; }
         
         .approve-card {
@@ -17,7 +16,7 @@
             box-shadow: 0 4px 15px rgba(0,0,0,0.05);
             padding: 25px;
             margin-top: 20px;
-            border-top: 5px solid #3498db; /* สีหัวการ์ด */
+            border-top: 5px solid #3498db;
         }
 
         .info-group {
@@ -54,7 +53,6 @@
         .bg-Approved { background-color: #2ecc71; }
         .bg-Rejected { background-color: #e74c3c; }
 
-        /* Action Section */
         .actions-panel {
             margin-top: 30px;
             background: #f8f9fa;
@@ -69,53 +67,18 @@
         }
 
         .btn-approve {
-            flex: 1;
-            background-color: #2ecc71;
-            color: white;
-            border: none;
-            padding: 12px;
-            border-radius: 6px;
-            font-size: 16px;
-            cursor: pointer;
-            transition: 0.2s;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 5px;
+            flex: 1; background-color: #2ecc71; color: white; border: none;
+            padding: 12px; border-radius: 6px; font-size: 16px; cursor: pointer;
+            display: flex; align-items: center; justify-content: center; gap: 5px;
         }
-        .btn-approve:hover { background-color: #27ae60; }
-
         .btn-reject {
-            flex: 1;
-            background-color: #e74c3c;
-            color: white;
-            border: none;
-            padding: 12px;
-            border-radius: 6px;
-            font-size: 16px;
-            cursor: pointer;
-            transition: 0.2s;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 5px;
+            flex: 1; background-color: #e74c3c; color: white; border: none;
+            padding: 12px; border-radius: 6px; font-size: 16px; cursor: pointer;
+            display: flex; align-items: center; justify-content: center; gap: 5px;
         }
-        .btn-reject:hover { background-color: #c0392b; }
-
-        .loading-box {
-            text-align: center;
-            padding: 40px;
-            color: #7f8c8d;
-        }
-
-        textarea {
-            width: 100%;
-            padding: 10px;
-            border: 1px solid #ddd;
-            border-radius: 6px;
-            font-family: 'Sarabun', sans-serif;
-            resize: vertical;
-        }
+        
+        .loading-box { text-align: center; padding: 40px; color: #7f8c8d; }
+        textarea { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 6px; font-family: 'Sarabun', sans-serif; resize: vertical; }
     </style>
 </head>
 
@@ -128,18 +91,26 @@
         </header>
 
         <div id="loading" class="loading-box">
-            <div class="spinner"></div>
             <p>กำลังโหลดข้อมูลคำขอ...</p>
         </div>
 
         <div id="content" style="display: none;">
             
             <div class="approve-card">
-                <div style="display: flex; justify-content: space-between; align-items: start;">
-                    <h2 id="reqType" style="margin: 0 0 20px 0; color: #3498db;">ประเภทคำขอ</h2>
+                <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 20px;">
+                    <h2 id="reqType" style="margin: 0; color: #3498db;">ประเภทคำขอ</h2>
                     <span id="reqStatusBadge" class="status-badge bg-Pending">Pending</span>
                 </div>
 
+                <div class="info-group">
+                    <span class="info-label">เลขที่คำขอ</span>
+                    <div class="info-value" id="reqId">-</div>
+                </div>
+
+                <div class="info-group">
+                    <span class="info-label">ส่งเมื่อ</span>
+                    <div class="info-value" id="reqTime">-</div>
+                </div>
                 <div class="info-group">
                     <span class="info-label">พนักงาน</span>
                     <div class="info-value" id="empName">-</div>
@@ -163,12 +134,8 @@
                 </div>
 
                 <div class="actions-buttons">
-                    <button class="btn-approve" onclick="processRequest('Approved')">
-                        ✅ อนุมัติ
-                    </button>
-                    <button class="btn-reject" onclick="processRequest('Rejected')">
-                        ❌ ไม่อนุมัติ
-                    </button>
+                    <button class="btn-approve" onclick="processRequest('Approved')">✅ อนุมัติ</button>
+                    <button class="btn-reject" onclick="processRequest('Rejected')">❌ ไม่อนุมัติ</button>
                 </div>
             </div>
 
@@ -182,15 +149,13 @@
     <script src="script.js"></script> 
     
     <script>
-        // Logic สำหรับหน้า Approve โดยเฉพาะ
         const urlParams = new URLSearchParams(window.location.search);
         const requestId = urlParams.get('id');
 
-        // ฟังก์ชันรอให้ script.js โหลดเสร็จ หรือใช้ค่า Default
+        // ฟังก์ชันช่วยหา URL (เผื่อ script.js โหลดไม่ทัน)
         function getApiUrl() {
             if (typeof WEB_APP_URL !== 'undefined') return WEB_APP_URL;
-            // กรณี script.js โหลดไม่ทัน ให้ใส่ URL ตรงๆ สำรองไว้ตรงนี้ได้ครับ
-            return "https://script.google.com/macros/s/AKfycbxLMpkCCIfmIUgn0XLofmyJmUJ6GecwRhs_ICkFtflNejBRkAIQxZahxtQYt7u5JaIKgA/exec";
+            return "https://script.google.com/macros/s/AKfycbyehP0dhJdvTKiPiy6jDqRgxoz-Yuj0vly-PG3ldrF0tQqkGqgSAwVnwt9o_J3aMFhbng/exec";
         }
 
         async function loadRequest() {
@@ -209,22 +174,23 @@
                     
                     // Render Data
                     document.getElementById('reqType').innerText = data.requestType;
+                    
+                    // --- ส่วนที่เพิ่ม: แสดง ID และ เวลา ---
+                    document.getElementById('reqId').innerText = data.id;
+                    document.getElementById('reqTime').innerText = data.submissionTime || '-'; 
+                    // ------------------------------------
+
                     document.getElementById('empName').innerText = data.employeeName;
                     document.getElementById('reqDetail').innerText = data.detail;
-                    
-                    // Format Date
                     document.getElementById('reqDate').innerText = formatThaiDateRange(data);
 
-                    // Update Status Badge
                     const badge = document.getElementById('reqStatusBadge');
                     badge.className = `status-badge bg-${data.currentStatus}`;
                     badge.innerText = data.currentStatus;
 
-                    // Show Content
                     document.getElementById('loading').style.display = 'none';
                     document.getElementById('content').style.display = 'block';
 
-                    // Hide Actions if already processed
                     if (data.currentStatus !== 'Pending') {
                         document.getElementById('actionArea').style.display = 'none';
                         document.getElementById('completedMessage').style.display = 'block';
@@ -242,23 +208,18 @@
         async function processRequest(status) {
             const note = document.getElementById('adminNote').value;
 
-            // 1. PIN Verification
             const { value: pin } = await Swal.fire({
                 title: 'ยืนยันตัวตนหัวหน้างาน',
                 text: 'กรุณากรอกรหัส PIN เพื่อยืนยัน',
                 input: 'password',
                 inputPlaceholder: 'PIN Code',
-                inputAttributes: { maxlength: 10, autocapitalize: 'off', autocorrect: 'off' },
                 showCancelButton: true,
                 confirmButtonText: 'ยืนยัน',
                 cancelButtonText: 'ยกเลิก',
-                inputValidator: (value) => {
-                    if (!value) return 'กรุณากรอกรหัส PIN!';
-                }
+                inputValidator: (value) => { if (!value) return 'กรุณากรอกรหัส PIN!'; }
             });
 
             if (pin) {
-                // 2. Confirm Action
                 const actionText = status === 'Approved' ? 'อนุมัติ' : 'ไม่อนุมัติ';
                 const confirmResult = await Swal.fire({
                     title: `ยืนยันการ ${actionText}?`,
@@ -287,10 +248,9 @@
                         });
 
                         const result = await response.json();
-
                         if (result.status === 'success') {
                             Swal.fire('สำเร็จ', 'บันทึกสถานะเรียบร้อยแล้ว', 'success').then(() => {
-                                location.reload(); // Reload to update status
+                                location.reload();
                             });
                         } else {
                             Swal.fire('รหัส PIN ไม่ถูกต้อง', 'กรุณาลองใหม่อีกครั้ง', 'error');
@@ -302,25 +262,18 @@
             }
         }
 
-        // Helper: Date Formatter
         function formatThaiDateRange(data) {
             const fmt = (d) => {
                 if (!d) return "";
                 const date = new Date(d);
                 return date.toLocaleDateString('th-TH', { year: 'numeric', month: 'long', day: 'numeric' });
             };
-
-            if (data.startDate) {
-                return `${fmt(data.startDate)} ถึง ${fmt(data.endDate)}`;
-            } else if (data.changeFrom) {
-                return `เปลี่ยนจาก ${fmt(data.changeFrom)} เป็น ${fmt(data.changeTo)}`;
-            }
+            if (data.startDate) return `${fmt(data.startDate)} ถึง ${fmt(data.endDate)}`;
+            else if (data.changeFrom) return `เปลี่ยนจาก ${fmt(data.changeFrom)} เป็น ${fmt(data.changeTo)}`;
             return "-";
         }
 
-        // Start
         window.addEventListener('load', loadRequest);
-
     </script>
 </body>
 </html>
