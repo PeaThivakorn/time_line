@@ -1,5 +1,5 @@
 // ⚠️ สำคัญ: เปลี่ยน URL ด้านล่างให้เป็น URL ของ Apps Script ที่คุณ Deploy ล่าสุด
-const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbxdkGzP7nvTWZwSwQx2nC24vUlmx6JHP_IORrNKNCJIhFybeAerFPKuWfvPS7lmYDsKxg/exec";
+const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbxLMpkCCIfmIUgn0XLofmyJmUJ6GecwRhs_ICkFtflNejBRkAIQxZahxtQYt7u5JaIKgA/exec";
 
 function openTab(tabName) {
     const contents = document.querySelectorAll('.tab-content');

@@ -1,55 +1,120 @@
 <!DOCTYPE html>
 <html lang="th">
-
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>อนุมัติคำขอ</title>
+    <title>อนุมัติคำขอ - ระบบลางาน</title>
     <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;600&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <link rel="stylesheet" href="style.css">
     <style>
-        .request-card {
-            background: #f9f9f9;
-            padding: 20px;
+        /* สไตล์เฉพาะหน้าอนุมัติ */
+        body { background-color: #f4f6f9; }
+        
+        .approve-card {
+            background: #fff;
             border-radius: 10px;
-            margin-bottom: 20px;
-            border-left: 5px solid #3498db;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+            padding: 25px;
+            margin-top: 20px;
+            border-top: 5px solid #3498db; /* สีหัวการ์ด */
         }
 
-        .actions {
+        .info-group {
+            margin-bottom: 15px;
+            border-bottom: 1px dashed #eee;
+            padding-bottom: 10px;
+        }
+
+        .info-group:last-child { border-bottom: none; }
+
+        .info-label {
+            font-weight: 600;
+            color: #7f8c8d;
+            font-size: 14px;
+            margin-bottom: 5px;
+            display: block;
+        }
+
+        .info-value {
+            font-size: 16px;
+            color: #2c3e50;
+            font-weight: 500;
+        }
+
+        .status-badge {
+            display: inline-block;
+            padding: 5px 12px;
+            border-radius: 15px;
+            font-size: 14px;
+            font-weight: bold;
+            color: white;
+        }
+        .bg-Pending { background-color: #f1c40f; }
+        .bg-Approved { background-color: #2ecc71; }
+        .bg-Rejected { background-color: #e74c3c; }
+
+        /* Action Section */
+        .actions-panel {
+            margin-top: 30px;
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 8px;
+        }
+
+        .actions-buttons {
             display: flex;
-            gap: 15px;
-            margin-top: 20px;
+            gap: 10px;
+            margin-top: 15px;
         }
 
         .btn-approve {
+            flex: 1;
             background-color: #2ecc71;
             color: white;
-            flex: 1;
-            padding: 12px;
             border: none;
+            padding: 12px;
             border-radius: 6px;
-            cursor: pointer;
             font-size: 16px;
+            cursor: pointer;
+            transition: 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 5px;
         }
+        .btn-approve:hover { background-color: #27ae60; }
 
         .btn-reject {
+            flex: 1;
             background-color: #e74c3c;
             color: white;
-            flex: 1;
-            padding: 12px;
             border: none;
+            padding: 12px;
             border-radius: 6px;
-            cursor: pointer;
             font-size: 16px;
+            cursor: pointer;
+            transition: 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 5px;
+        }
+        .btn-reject:hover { background-color: #c0392b; }
+
+        .loading-box {
+            text-align: center;
+            padding: 40px;
+            color: #7f8c8d;
         }
 
-        .loading {
-            text-align: center;
-            padding: 50px;
-            font-size: 18px;
-            color: #666;
+        textarea {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-family: 'Sarabun', sans-serif;
+            resize: vertical;
         }
     </style>
 </head>
@@ -59,81 +124,112 @@
     <div class="container">
         <header>
             <h1>🛡️ พิจารณาคำขอ</h1>
+            <p>ตรวจสอบและอนุมัติวันลา/สลับวันหยุด</p>
         </header>
 
-        <div id="loading" class="loading">กำลังโหลดข้อมูล...</div>
+        <div id="loading" class="loading-box">
+            <div class="spinner"></div>
+            <p>กำลังโหลดข้อมูลคำขอ...</p>
+        </div>
 
         <div id="content" style="display: none;">
-            <div class="request-card">
-                <h2 id="reqType">ประเภทคำขอ</h2>
-                <p><strong>พนักงาน:</strong> <span id="empName">-</span></p>
-                <p><strong>รายละเอียด:</strong> <span id="reqDetail">-</span></p>
-                <p><strong>วันที่:</strong> <span id="reqDate">-</span></p>
-                <p><strong>สถานะปัจจุบัน:</strong> <span id="reqStatus">-</span></p>
+            
+            <div class="approve-card">
+                <div style="display: flex; justify-content: space-between; align-items: start;">
+                    <h2 id="reqType" style="margin: 0 0 20px 0; color: #3498db;">ประเภทคำขอ</h2>
+                    <span id="reqStatusBadge" class="status-badge bg-Pending">Pending</span>
+                </div>
+
+                <div class="info-group">
+                    <span class="info-label">พนักงาน</span>
+                    <div class="info-value" id="empName">-</div>
+                </div>
+
+                <div class="info-group">
+                    <span class="info-label">วันที่ขอหยุด/สลับ</span>
+                    <div class="info-value" id="reqDate">-</div>
+                </div>
+
+                <div class="info-group">
+                    <span class="info-label">รายละเอียด/เหตุผล</span>
+                    <div class="info-value" id="reqDetail">-</div>
+                </div>
             </div>
 
-            <div class="form-group">
-                <label>หมายเหตุ (ถ้ามี)</label>
-                <textarea id="adminNote" rows="2" placeholder="ระบุเหตุผลการอนุมัติ/ไม่อนุมัติ..."></textarea>
+            <div id="actionArea" class="actions-panel">
+                <div class="form-group">
+                    <label style="font-weight: 600; margin-bottom: 8px; display:block;">📝 หมายเหตุถึงพนักงาน (ถ้ามี)</label>
+                    <textarea id="adminNote" rows="2" placeholder="เช่น อนุมัติครับ หรือ ติดภารกิจอื่น..."></textarea>
+                </div>
+
+                <div class="actions-buttons">
+                    <button class="btn-approve" onclick="processRequest('Approved')">
+                        ✅ อนุมัติ
+                    </button>
+                    <button class="btn-reject" onclick="processRequest('Rejected')">
+                        ❌ ไม่อนุมัติ
+                    </button>
+                </div>
             </div>
 
-            <div class="actions">
-                <button class="btn-approve" onclick="processRequest('Approved')">✔ อนุมัติ</button>
-                <button class="btn-reject" onclick="processRequest('Rejected')">✖ ไม่อนุมัติ</button>
+            <div id="completedMessage" style="display: none; text-align: center; margin-top: 20px; color: #7f8c8d;">
+                <p>⚠️ รายการนี้ถูกดำเนินการไปแล้ว ไม่สามารถแก้ไขได้</p>
             </div>
+
         </div>
     </div>
 
-    <script src="script.js"></script>
+    <script src="script.js"></script> 
+    
     <script>
-        // Specific logic for Approval Page
+        // Logic สำหรับหน้า Approve โดยเฉพาะ
         const urlParams = new URLSearchParams(window.location.search);
         const requestId = urlParams.get('id');
 
+        // ฟังก์ชันรอให้ script.js โหลดเสร็จ หรือใช้ค่า Default
+        function getApiUrl() {
+            if (typeof WEB_APP_URL !== 'undefined') return WEB_APP_URL;
+            // กรณี script.js โหลดไม่ทัน ให้ใส่ URL ตรงๆ สำรองไว้ตรงนี้ได้ครับ
+            return "https://script.google.com/macros/s/AKfycbxLMpkCCIfmIUgn0XLofmyJmUJ6GecwRhs_ICkFtflNejBRkAIQxZahxtQYt7u5JaIKgA/exec";
+        }
+
         async function loadRequest() {
             if (!requestId) {
-                document.getElementById('loading').innerText = "ไม่พบรหัสคำขอ (Request ID)";
+                document.getElementById('loading').innerHTML = "<p style='color:red;'>❌ ไม่พบรหัสคำขอ (Request ID)</p>";
                 return;
             }
 
             try {
-                // Reusing the fetch function from script.js logic, but we need to ensure config is loaded
-                // For simplicity, we define the fetch logic here or assume script.js has a helper
-                const response = await fetch(`${WEB_APP_URL}?action=get_request&id=${requestId}`);
+                const url = getApiUrl();
+                const response = await fetch(`${url}?action=get_request&id=${requestId}`);
                 const result = await response.json();
 
                 if (result.status === 'success') {
                     const data = result.data;
+                    
+                    // Render Data
                     document.getElementById('reqType').innerText = data.requestType;
                     document.getElementById('empName').innerText = data.employeeName;
                     document.getElementById('reqDetail').innerText = data.detail;
+                    
+                    // Format Date
+                    document.getElementById('reqDate').innerText = formatThaiDateRange(data);
 
-                    let dateStr = "";
-                    const formatDate = (d) => {
-                        if (!d) return "-";
-                        const date = new Date(d);
-                        return date.toLocaleDateString('th-TH', {
-                            year: 'numeric',
-                            month: 'long',
-                            day: 'numeric'
-                        });
-                    };
+                    // Update Status Badge
+                    const badge = document.getElementById('reqStatusBadge');
+                    badge.className = `status-badge bg-${data.currentStatus}`;
+                    badge.innerText = data.currentStatus;
 
-                    if (data.startDate) {
-                        dateStr = `${formatDate(data.startDate)} ถึง ${formatDate(data.endDate)}`;
-                    } else {
-                        dateStr = `เปลี่ยนจาก ${formatDate(data.changeFrom)} เป็น ${formatDate(data.changeTo)}`;
-                    }
-                    document.getElementById('reqDate').innerText = dateStr;
-                    document.getElementById('reqStatus').innerText = data.currentStatus;
-
-                    if (data.currentStatus !== 'Pending') {
-                        Swal.fire('แจ้งเตือน', `คำขอนี้ถูกดำเนินการไปแล้วเป็นสถานะ: ${data.currentStatus}`, 'info');
-                        document.querySelector('.actions').style.display = 'none';
-                    }
-
+                    // Show Content
                     document.getElementById('loading').style.display = 'none';
                     document.getElementById('content').style.display = 'block';
+
+                    // Hide Actions if already processed
+                    if (data.currentStatus !== 'Pending') {
+                        document.getElementById('actionArea').style.display = 'none';
+                        document.getElementById('completedMessage').style.display = 'block';
+                    }
+
                 } else {
                     document.getElementById('loading').innerText = "ไม่พบข้อมูลคำขอ";
                 }
@@ -146,69 +242,85 @@
         async function processRequest(status) {
             const note = document.getElementById('adminNote').value;
 
-            // Prompt for PIN
+            // 1. PIN Verification
             const { value: pin } = await Swal.fire({
-                title: 'ยืนยันตัวตน',
-                text: 'กรุณากรอกรหัส PIN เพื่อดำเนินการ',
+                title: 'ยืนยันตัวตนหัวหน้างาน',
+                text: 'กรุณากรอกรหัส PIN เพื่อยืนยัน',
                 input: 'password',
-                inputPlaceholder: 'รหัส PIN',
+                inputPlaceholder: 'PIN Code',
+                inputAttributes: { maxlength: 10, autocapitalize: 'off', autocorrect: 'off' },
                 showCancelButton: true,
                 confirmButtonText: 'ยืนยัน',
                 cancelButtonText: 'ยกเลิก',
                 inputValidator: (value) => {
-                    if (!value) {
-                        return 'กรุณากรอกรหัส PIN!';
-                    }
+                    if (!value) return 'กรุณากรอกรหัส PIN!';
                 }
             });
 
             if (pin) {
-                Swal.fire({
-                    title: `ยืนยันการ ${status === 'Approved' ? 'อนุมัติ' : 'ไม่อนุมัติ'}?`,
+                // 2. Confirm Action
+                const actionText = status === 'Approved' ? 'อนุมัติ' : 'ไม่อนุมัติ';
+                const confirmResult = await Swal.fire({
+                    title: `ยืนยันการ ${actionText}?`,
+                    text: "คุณต้องการดำเนินการรายการนี้ใช่หรือไม่",
+                    icon: status === 'Approved' ? 'question' : 'warning',
                     showCancelButton: true,
-                    confirmButtonText: 'ยืนยัน',
+                    confirmButtonColor: status === 'Approved' ? '#2ecc71' : '#e74c3c',
+                    confirmButtonText: `ยืนยัน ${actionText}`,
                     cancelButtonText: 'ยกเลิก'
-                }).then(async (result) => {
-                    if (result.isConfirmed) {
-                        Swal.fire({ title: 'กำลังบันทึก...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
-
-                        try {
-                            const response = await fetch(WEB_APP_URL, {
-                                method: 'POST',
-                                body: JSON.stringify({
-                                    action: 'approve_request',
-                                    id: requestId,
-                                    status: status,
-                                    adminNote: note,
-                                    pin: pin // Send PIN to backend
-                                })
-                            });
-
-                            const result = await response.json();
-
-                            if (result.status === 'success') {
-                                Swal.fire('สำเร็จ', 'บันทึกสถานะเรียบร้อยแล้ว', 'success').then(() => {
-                                    location.reload();
-                                });
-                            } else {
-                                Swal.fire('ผิดพลาด', result.message, 'error');
-                            }
-                        } catch (error) {
-                            Swal.fire('ผิดพลาด', 'ไม่สามารถบันทึกข้อมูลได้', 'error');
-                        }
-                    }
                 });
+
+                if (confirmResult.isConfirmed) {
+                    Swal.fire({ title: 'กำลังบันทึก...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+
+                    try {
+                        const url = getApiUrl();
+                        const response = await fetch(url, {
+                            method: 'POST',
+                            body: JSON.stringify({
+                                action: 'approve_request',
+                                id: requestId,
+                                status: status,
+                                adminNote: note,
+                                pin: pin
+                            })
+                        });
+
+                        const result = await response.json();
+
+                        if (result.status === 'success') {
+                            Swal.fire('สำเร็จ', 'บันทึกสถานะเรียบร้อยแล้ว', 'success').then(() => {
+                                location.reload(); // Reload to update status
+                            });
+                        } else {
+                            Swal.fire('รหัส PIN ไม่ถูกต้อง', 'กรุณาลองใหม่อีกครั้ง', 'error');
+                        }
+                    } catch (error) {
+                        Swal.fire('ผิดพลาด', 'ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้', 'error');
+                    }
+                }
             }
         }
 
-        // Initialize
-        if (typeof WEB_APP_URL !== 'undefined') {
-            loadRequest();
-        } else {
-            // Fallback if script.js hasn't loaded config yet (race condition safe-guard)
-            window.addEventListener('load', loadRequest);
+        // Helper: Date Formatter
+        function formatThaiDateRange(data) {
+            const fmt = (d) => {
+                if (!d) return "";
+                const date = new Date(d);
+                return date.toLocaleDateString('th-TH', { year: 'numeric', month: 'long', day: 'numeric' });
+            };
+
+            if (data.startDate) {
+                return `${fmt(data.startDate)} ถึง ${fmt(data.endDate)}`;
+            } else if (data.changeFrom) {
+                return `เปลี่ยนจาก ${fmt(data.changeFrom)} เป็น ${fmt(data.changeTo)}`;
+            }
+            return "-";
         }
+
+        // Start
+        window.addEventListener('load', loadRequest);
+
     </script>
 </body>
-
 </html>
