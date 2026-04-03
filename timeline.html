@@ -1,0 +1,726 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ระบบลงวันหยุดพนักงาน</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Prompt', sans-serif;
+            background-color: #f3f4f6;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .modal-enter { transform: translateY(100%); }
+        .modal-enter-active { transform: translateY(0); transition: transform 0.3s ease-out; }
+        .modal-exit { transform: translateY(0); }
+        .modal-exit-active { transform: translateY(100%); transition: transform 0.3s ease-in; }
+        
+        .leave-dot { width: 6px; height: 6px; border-radius: 50%; display: inline-block; margin: 0 1px; }
+        .leave-ลาป่วย { background-color: #ef4444; } /* Red */
+        .leave-ลากิจ { background-color: #3b82f6; } /* Blue */
+        .leave-ลาพักร้อน { background-color: #10b981; } /* Green */
+        .leave-สลับวันหยุด { background-color: #f59e0b; } /* Amber */
+        .leave-ใช้วันหยุดนักขัตฤกษ์ { background-color: #a855f7; } /* Purple */
+        
+        .holiday-text { color: #e11d48; font-weight: 600; }
+        .regular-day-off { background-image: repeating-linear-gradient(45deg, transparent, transparent 5px, rgba(0,0,0,0.03) 5px, rgba(0,0,0,0.03) 10px); }
+    </style>
+</head>
+<body class="text-gray-800">
+
+    <!-- Login Screen Overlay -->
+    <div id="loginScreen" class="fixed inset-0 bg-indigo-600 z-[100] flex flex-col justify-center items-center p-4 transition-opacity duration-500">
+        <div class="bg-white rounded-2xl shadow-2xl p-6 w-full max-w-sm text-center">
+            <div class="w-16 h-16 bg-indigo-100 rounded-full flex items-center justify-center mx-auto mb-4 text-indigo-600 text-3xl">
+                <i class="ph ph-users"></i>
+            </div>
+            <h2 class="text-2xl font-semibold mb-2">เข้าสู่ระบบ</h2>
+            <p class="text-sm text-gray-500 mb-6">กรุณากรอกรหัสพนักงานเพื่อใช้งานระบบ</p>
+            
+            <input type="text" id="empCodeInput" class="w-full p-3 border border-gray-300 rounded-xl mb-4 focus:ring-2 focus:ring-indigo-500 outline-none text-center text-lg tracking-widest" placeholder="รหัสพนักงาน" autocomplete="off">
+            
+            <button id="loginBtn" onclick="login()" class="w-full bg-indigo-600 text-white font-medium p-3 rounded-xl shadow-md hover:bg-indigo-700 transition">
+                <i class="ph ph-spinner animate-spin mr-2 hidden" id="loginSpinner"></i> เข้าสู่ระบบ
+            </button>
+        </div>
+    </div>
+
+    <!-- Main Container -->
+    <div id="mainApp" class="max-w-md mx-auto min-h-screen bg-white shadow-xl relative pb-20 hidden opacity-0 transition-opacity duration-500">
+        
+        <!-- Header -->
+        <header class="bg-indigo-600 text-white p-4 shadow-md sticky top-0 z-10 rounded-b-2xl">
+            <div class="flex justify-between items-center mb-4">
+                <h1 class="text-xl font-semibold">ลงวันหยุดพนักงาน</h1>
+                <div class="flex items-center space-x-2 bg-indigo-800/50 px-3 py-1 rounded-full text-sm">
+                    <i class="ph ph-user-circle text-lg"></i>
+                    <span id="currentUserNameDisplay">ชื่อผู้ใช้</span>
+                    <button onclick="logout()" class="ml-2 text-indigo-200 hover:text-white" title="ออกจากระบบ"><i class="ph ph-sign-out"></i></button>
+                </div>
+            </div>
+            
+            <!-- Month/Year Navigation -->
+            <div class="flex justify-between items-center bg-white/20 rounded-lg p-2">
+                <button onclick="changeMonth(-1)" class="p-2 hover:bg-white/30 rounded-full transition">
+                    <i class="ph ph-caret-left text-xl"></i>
+                </button>
+                <h2 id="monthYearDisplay" class="text-lg font-medium">เมษายน 2026</h2>
+                <button onclick="changeMonth(1)" class="p-2 hover:bg-white/30 rounded-full transition">
+                    <i class="ph ph-caret-right text-xl"></i>
+                </button>
+            </div>
+        </header>
+
+        <!-- Legends -->
+        <div class="px-4 mt-3 flex flex-wrap gap-2 text-xs text-gray-600 justify-center">
+            <div class="flex items-center"><span class="w-2 h-2 rounded-full bg-red-500 mr-1"></span> ป่วย</div>
+            <div class="flex items-center"><span class="w-2 h-2 rounded-full bg-blue-500 mr-1"></span> กิจ</div>
+            <div class="flex items-center"><span class="w-2 h-2 rounded-full bg-green-500 mr-1"></span> พักร้อน</div>
+            <div class="flex items-center"><span class="w-2 h-2 rounded-full bg-amber-500 mr-1"></span> สลับหยุด</div>
+            <div class="flex items-center"><span class="w-2 h-2 rounded-full bg-purple-500 mr-1"></span> ใช้นักขัตฤกษ์</div>
+        </div>
+
+        <!-- Calendar Area -->
+        <div class="p-4">
+            <!-- Days of Week -->
+            <div class="grid grid-cols-7 gap-1 text-center font-medium text-sm text-gray-500 mb-2">
+                <div class="text-red-500">อา</div><div>จ</div><div>อ</div><div>พ</div><div>พฤ</div><div>ศ</div><div class="text-blue-500">ส</div>
+            </div>
+
+            <!-- Calendar Grid -->
+            <div id="calendarGrid" class="grid grid-cols-7 gap-2">
+                <!-- Days will be generated by JS -->
+            </div>
+        </div>
+
+        <!-- Notification Toast -->
+        <div id="toast" class="fixed top-4 left-1/2 transform -translate-x-1/2 bg-gray-800 text-white px-4 py-2 rounded-lg shadow-lg opacity-0 pointer-events-none transition-opacity duration-300 z-50">
+            ดำเนินการสำเร็จ!
+        </div>
+
+    </div>
+
+    <!-- Modal Overlay -->
+    <div id="modalOverlay" class="fixed inset-0 bg-black/60 z-40 hidden opacity-0 transition-opacity duration-300" onclick="closeModal()"></div>
+
+    <!-- Bottom Sheet Modal -->
+    <div id="leaveModal" class="fixed bottom-0 left-0 right-0 z-50 bg-white rounded-t-3xl shadow-2xl modal-enter max-w-md mx-auto hidden flex-col max-h-[90vh]">
+        <div class="w-12 h-1.5 bg-gray-300 rounded-full mx-auto mt-3 mb-2 shrink-0"></div>
+        <div class="p-5 overflow-y-auto pb-8">
+            <div class="flex justify-between items-start mb-4">
+                <div>
+                    <h3 id="selectedDateDisplay" class="text-xl font-semibold text-indigo-600">วันที่...</h3>
+                    <p id="holidayDisplay" class="text-sm text-red-500 font-medium hidden mt-1"></p>
+                </div>
+                <button onclick="closeModal()" class="p-2 bg-gray-100 rounded-full hover:bg-gray-200">
+                    <i class="ph ph-x"></i>
+                </button>
+            </div>
+
+            <!-- Existing Leaves List -->
+            <div id="existingLeavesContainer" class="mb-5 hidden">
+                <h4 class="text-sm font-medium text-gray-500 mb-2">สถานะในวันนี้:</h4>
+                <ul id="existingLeavesList" class="space-y-2">
+                    <!-- List generated by JS -->
+                </ul>
+            </div>
+
+            <!-- Add Leave Form -->
+            <form id="leaveForm" onsubmit="saveLeave(event)" class="border-t pt-4">
+                <h4 class="text-sm font-medium text-indigo-600 mb-3"><i class="ph ph-plus-circle"></i> เพิ่มข้อมูลการหยุด/ลา</h4>
+                
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">ชื่อพนักงาน</label>
+                    <select id="empNameSelect" class="w-full p-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none bg-gray-50" disabled>
+                        <!-- Options generated by JS -->
+                    </select>
+                    <p id="adminNotice" class="text-xs text-amber-600 mt-1 hidden">* Admin สามารถเลือกบันทึกแทนผู้อื่นได้</p>
+                </div>
+
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">ประเภทรายการ</label>
+                    <div class="grid grid-cols-2 gap-2 mb-2">
+                        <label class="cursor-pointer">
+                            <input type="radio" name="leaveType" value="ลาป่วย" required onchange="handleLeaveTypeChange(this.value)" class="peer hidden">
+                            <div class="text-center p-2 border rounded-xl peer-checked:bg-red-50 peer-checked:border-red-500 peer-checked:text-red-700 transition text-sm">
+                                <span class="w-2.5 h-2.5 rounded-full bg-red-500 inline-block mr-1"></span> ลาป่วย
+                            </div>
+                        </label>
+                        <label class="cursor-pointer">
+                            <input type="radio" name="leaveType" value="ลากิจ" onchange="handleLeaveTypeChange(this.value)" class="peer hidden">
+                            <div class="text-center p-2 border rounded-xl peer-checked:bg-blue-50 peer-checked:border-blue-500 peer-checked:text-blue-700 transition text-sm">
+                                <span class="w-2.5 h-2.5 rounded-full bg-blue-500 inline-block mr-1"></span> ลากิจ
+                            </div>
+                        </label>
+                        <label class="cursor-pointer">
+                            <input type="radio" name="leaveType" value="ลาพักร้อน" onchange="handleLeaveTypeChange(this.value)" class="peer hidden">
+                            <div class="text-center p-2 border rounded-xl peer-checked:bg-green-50 peer-checked:border-green-500 peer-checked:text-green-700 transition text-sm">
+                                <span class="w-2.5 h-2.5 rounded-full bg-green-500 inline-block mr-1"></span> พักร้อน
+                            </div>
+                        </label>
+                        <label class="cursor-pointer">
+                            <input type="radio" name="leaveType" value="สลับวันหยุด" onchange="handleLeaveTypeChange(this.value)" class="peer hidden">
+                            <div class="text-center p-2 border rounded-xl peer-checked:bg-amber-50 peer-checked:border-amber-500 peer-checked:text-amber-700 transition text-sm">
+                                <span class="w-2.5 h-2.5 rounded-full bg-amber-500 inline-block mr-1"></span> สลับวันหยุด
+                            </div>
+                        </label>
+                        <label class="cursor-pointer col-span-2">
+                            <input type="radio" name="leaveType" value="ใช้วันหยุดนักขัตฤกษ์" onchange="handleLeaveTypeChange(this.value)" class="peer hidden">
+                            <div class="text-center p-2 border rounded-xl peer-checked:bg-purple-50 peer-checked:border-purple-500 peer-checked:text-purple-700 transition text-sm">
+                                <span class="w-2.5 h-2.5 rounded-full bg-purple-500 inline-block mr-1"></span> ใช้วันหยุดนักขัตฤกษ์
+                            </div>
+                        </label>
+                    </div>
+                </div>
+
+                <!-- ช่องระบุวันที่สลับ (ซ่อนโดยปริยาย) -->
+                <div id="swapDateContainer" class="mb-4 hidden bg-amber-50 p-3 rounded-xl border border-amber-200 transition-all">
+                    <label id="swapDateLabel" class="block text-sm font-medium text-amber-800 mb-1">เลือกวันที่สลับมา</label>
+                    <input type="date" id="swapDate" class="w-full p-2 border border-amber-300 rounded-lg focus:ring-2 focus:ring-amber-500 outline-none bg-white text-sm">
+                </div>
+
+                <div class="mb-6">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">หมายเหตุ (ถ้ามี)</label>
+                    <textarea id="leaveReason" rows="2" class="w-full p-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none transition text-sm" placeholder="ระบุเหตุผลเพิ่มเติม..."></textarea>
+                </div>
+
+                <button type="submit" id="submitBtn" class="w-full bg-indigo-600 text-white font-medium p-3 rounded-xl shadow-md hover:bg-indigo-700 transition flex justify-center items-center">
+                    <i class="ph ph-floppy-disk mr-2 text-xl"></i> บันทึกข้อมูล
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        /* =========================================
+           1. ตั้งค่า Google Sheets API URL 
+           !!! นำลิงก์ที่คัดลอกมาวางในเครื่องหมายคำพูดด้านล่างนี้ !!!
+           ========================================= */
+        const GOOGLE_APP_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzuoneq7S2ugDw9o5M0_ouLIVEO7PgdZj3UJIKNpHhvLzVT7JjAlVKeunnIoZM-BZfh/exec'; 
+
+        /* =========================================
+           ตัวแปรระบบ
+           ========================================= */
+        let EMPLOYEES = []; 
+        let leavesData = {}; 
+
+        const PUBLIC_HOLIDAYS = {
+            "2026-01-01": "วันขึ้นปีใหม่",
+            "2026-03-03": "วันมาฆบูชา",
+            "2026-04-13": "วันสงกรานต์",
+            "2026-04-14": "วันสงกรานต์",
+            "2026-04-15": "วันสงกรานต์",
+            "2026-05-01": "วันแรงงานแห่งชาติ",
+            "2026-06-03": "วันเฉลิมพระชนมพรรษาสมเด็จพระนางเจ้าฯ พระบรมราชินี",
+            "2026-07-28": "วันเฉลิมพระชนมพรรษาพระบาทสมเด็จพระเจ้าอยู่หัว",
+            "2026-08-12": "วันแม่แห่งชาติ",
+            "2026-10-13": "วันนวมินทรมหาราช",
+            "2026-10-23": "วันปิยมหาราช",
+            "2026-12-05": "วันพ่อแห่งชาติ",
+            "2026-12-31": "วันสิ้นปี"
+        };
+
+        const monthNames = ["มกราคม", "กุมภาพันธ์", "มีนาคม", "เมษายน", "พฤษภาคม", "มิถุนายน", "กรกฎาคม", "สิงหาคม", "กันยายน", "ตุลาคม", "พฤศจิกายน", "ธันวาคม"];
+        let currentDate = new Date();
+        let selectedDate = null;
+        let currentUser = null;
+
+        /* =========================================
+           ฟังก์ชันเริ่มต้นระบบ & เข้าสู่ระบบ
+           ========================================= */
+        async function initApp() {
+            const loginBtn = document.getElementById('loginBtn');
+            const spinner = document.getElementById('loginSpinner');
+            
+            if (!GOOGLE_APP_SCRIPT_URL) {
+                alert("⚠️ ผู้ดูแลระบบ: กรุณาตั้งค่า GOOGLE_APP_SCRIPT_URL ในซอร์สโค้ดก่อนใช้งาน");
+                loginBtn.innerHTML = 'ยังไม่ได้ตั้งค่าระบบ';
+                loginBtn.disabled = true;
+                return;
+            }
+
+            spinner.classList.remove('hidden');
+            loginBtn.disabled = true;
+            loginBtn.classList.add('opacity-70');
+
+            try {
+                // โหลดข้อมูลแบบป้องกัน Cache
+                const response = await fetch(GOOGLE_APP_SCRIPT_URL + "?action=get&t=" + new Date().getTime());
+                const result = await response.json();
+                
+                if(result.employees && result.employees.length > 0) {
+                    EMPLOYEES = result.employees;
+                    const empNameSelect = document.getElementById('empNameSelect');
+                    empNameSelect.innerHTML = '';
+                    EMPLOYEES.forEach(emp => {
+                        empNameSelect.add(new Option(emp.name, emp.id));
+                    });
+                } else {
+                    alert("⚠️ ไม่พบข้อมูลพนักงานในแผ่นงาน 'Employees' ของ Google Sheets");
+                }
+
+                if(result.data) {
+                    leavesData = result.data;
+                }
+
+                // เช็ค Login Session อัตโนมัติ
+                const savedUserId = localStorage.getItem('currentUserId');
+                if (savedUserId && EMPLOYEES.length > 0) {
+                    currentUser = EMPLOYEES.find(e => e.id === savedUserId);
+                    if(currentUser) {
+                        showMainApp();
+                        return; // โหลดเข้าหน้าหลักเลย
+                    }
+                }
+
+                // ถ้ายังไม่เข้าสู่ระบบ ให้กรอกรหัสใหม่
+                spinner.classList.add('hidden');
+                loginBtn.disabled = false;
+                loginBtn.classList.remove('opacity-70');
+
+            } catch (error) {
+                console.error("Init error", error);
+                loginBtn.innerHTML = 'การเชื่อมต่อล้มเหลว (กรุณารีเฟรช)';
+            }
+        }
+
+        function login() {
+            const inputCode = document.getElementById('empCodeInput').value.trim();
+            if (!inputCode) {
+                alert("กรุณากรอกรหัสพนักงาน");
+                return;
+            }
+            
+            currentUser = EMPLOYEES.find(e => e.empCode === inputCode);
+            
+            if (!currentUser) {
+                alert("รหัสพนักงานไม่ถูกต้อง หรือยังไม่ได้เพิ่มลงใน Google Sheets");
+                return;
+            }
+
+            localStorage.setItem('currentUserId', currentUser.id);
+            showMainApp();
+        }
+
+        function logout() {
+            localStorage.removeItem('currentUserId');
+            currentUser = null;
+            document.getElementById('mainApp').classList.add('hidden', 'opacity-0');
+            document.getElementById('loginScreen').classList.remove('hidden');
+            setTimeout(() => {
+                document.getElementById('loginScreen').classList.remove('opacity-0');
+                document.getElementById('empCodeInput').value = ""; 
+            }, 50);
+        }
+
+        function showMainApp() {
+            document.getElementById('loginScreen').classList.add('opacity-0');
+            document.getElementById('currentUserNameDisplay').textContent = currentUser.name.split(' ')[0];
+            
+            setTimeout(() => {
+                document.getElementById('loginScreen').classList.add('hidden');
+                document.getElementById('mainApp').classList.remove('hidden');
+                
+                // ตั้งค่าฟอร์มตามสิทธิ์ (Admin / User)
+                const empNameSelect = document.getElementById('empNameSelect');
+                if (currentUser.role === 'admin') {
+                    empNameSelect.disabled = false;
+                    empNameSelect.classList.remove('bg-gray-50');
+                    document.getElementById('adminNotice').classList.remove('hidden');
+                } else {
+                    empNameSelect.value = currentUser.id;
+                    empNameSelect.disabled = true;
+                    empNameSelect.classList.add('bg-gray-50');
+                    document.getElementById('adminNotice').classList.add('hidden');
+                }
+
+                setTimeout(() => document.getElementById('mainApp').classList.remove('opacity-0'), 50);
+                
+                renderCalendar();
+            }, 500);
+        }
+
+        /* =========================================
+           ฟังก์ชันปฏิทิน และการจัดการรูปแบบข้อมูล
+           ========================================= */
+        function parseLeaveData(leave) {
+            let actualReason = leave.reason || '';
+            let swapDate = null;
+            if (actualReason.startsWith('[SWAP:')) {
+                const endIdx = actualReason.indexOf(']');
+                if (endIdx !== -1) {
+                    swapDate = actualReason.substring(6, endIdx);
+                    actualReason = actualReason.substring(endIdx + 1);
+                }
+            }
+            return { ...leave, displayReason: actualReason, swapDate: swapDate };
+        }
+
+        function renderCalendar() {
+            const year = currentDate.getFullYear();
+            const month = currentDate.getMonth();
+            
+            document.getElementById('monthYearDisplay').textContent = `${monthNames[month]} ${year + 543}`;
+
+            const firstDay = new Date(year, month, 1).getDay();
+            const daysInMonth = new Date(year, month + 1, 0).getDate();
+            const grid = document.getElementById('calendarGrid');
+            grid.innerHTML = '';
+
+            for (let i = 0; i < firstDay; i++) {
+                grid.appendChild(document.createElement('div'));
+            }
+
+            // หาวันที่ถูกสลับทิ้งไปแล้ว
+            let swappedOutDates = {};
+            if (currentUser) {
+                Object.values(leavesData).forEach(dayLeaves => {
+                    dayLeaves.forEach(leaveRaw => {
+                        const leave = parseLeaveData(leaveRaw);
+                        if (leave.userId === currentUser.id && leave.swapDate) {
+                            swappedOutDates[leave.swapDate] = true;
+                        }
+                    });
+                });
+            }
+
+            const today = new Date();
+            for (let i = 1; i <= daysInMonth; i++) {
+                const dateString = `${year}-${String(month + 1).padStart(2, '0')}-${String(i).padStart(2, '0')}`;
+                const currentDayOfWeek = new Date(year, month, i).getDay();
+                
+                const isToday = i === today.getDate() && month === today.getMonth() && year === today.getFullYear();
+                const isPublicHoliday = PUBLIC_HOLIDAYS[dateString] !== undefined;
+                const isUserRegularDayOff = currentUser && currentUser.regularDaysOff.includes(currentDayOfWeek);
+                
+                let hasMySwapTarget = false;
+                let hasMyHolidayTarget = false;
+                if (leavesData[dateString] && currentUser) {
+                    leavesData[dateString].forEach(leaveRaw => {
+                        if (leaveRaw.userId === currentUser.id) {
+                            if (leaveRaw.type === 'สลับวันหยุด') hasMySwapTarget = true;
+                            if (leaveRaw.type === 'ใช้วันหยุดนักขัตฤกษ์') hasMyHolidayTarget = true;
+                        }
+                    });
+                }
+                
+                const isSwappedOut = swappedOutDates[dateString];
+                const dayBtn = document.createElement('button');
+                
+                let baseClasses = `aspect-square flex flex-col items-center justify-start pt-2 rounded-xl relative transition-all active:scale-95 overflow-hidden border `;
+                
+                if (isSwappedOut) {
+                    baseClasses += 'bg-gray-100 border-dashed border-gray-400 opacity-60 ';
+                } else if (hasMyHolidayTarget) {
+                    baseClasses += 'bg-purple-100 border-purple-300 ';
+                } else if (hasMySwapTarget) {
+                    baseClasses += 'bg-amber-100 border-amber-300 ';
+                } else if (isToday) {
+                    baseClasses += 'ring-2 ring-indigo-500 font-bold bg-indigo-50 border-transparent ';
+                } else if (isUserRegularDayOff) {
+                    baseClasses += 'bg-gray-100 regular-day-off border-gray-200 ';
+                } else {
+                    baseClasses += 'bg-white hover:bg-gray-50 border-gray-100 shadow-sm ';
+                }
+
+                dayBtn.className = baseClasses;
+                dayBtn.onclick = () => openModal(dateString, i, currentDayOfWeek);
+                
+                if (isSwappedOut) {
+                    const swappedLabel = document.createElement('div');
+                    swappedLabel.className = 'text-[9px] text-gray-500 bg-gray-200 w-full text-center absolute top-0 left-0 py-0.5 font-medium border-b border-dashed border-gray-300';
+                    swappedLabel.textContent = 'ถูกย้ายสิทธิ์';
+                    dayBtn.appendChild(swappedLabel);
+                }
+
+                const dayNum = document.createElement('span');
+                dayNum.textContent = i;
+                dayNum.className = isPublicHoliday ? 'text-red-600 font-semibold text-lg' : (isToday ? 'text-indigo-700 text-lg' : 'text-gray-700');
+                if (isSwappedOut) dayNum.classList.add('mt-3');
+                dayBtn.appendChild(dayNum);
+
+                if (leavesData[dateString] && leavesData[dateString].length > 0) {
+                    const dotsContainer = document.createElement('div');
+                    dotsContainer.className = 'flex flex-wrap mt-auto mb-1 justify-center w-full px-1 gap-[2px]';
+                    
+                    leavesData[dateString].forEach(leaveRaw => {
+                        const leave = parseLeaveData(leaveRaw);
+                        const dot = document.createElement('span');
+                        dot.className = `w-1.5 h-1.5 rounded-full leave-${leave.type}`;
+                        if(leave.userId === currentUser.id) dot.classList.add('ring-1', 'ring-offset-1', 'ring-gray-400');
+                        dotsContainer.appendChild(dot);
+                    });
+                    dayBtn.appendChild(dotsContainer);
+                }
+                grid.appendChild(dayBtn);
+            }
+        }
+
+        function changeMonth(delta) {
+            currentDate.setMonth(currentDate.getMonth() + delta);
+            renderCalendar();
+        }
+
+        /* =========================================
+           ฟังก์ชัน Modal เพิ่ม/ลบ ข้อมูล
+           ========================================= */
+        function formatDateThai(dateStr) {
+            if(!dateStr) return '';
+            const [y, m, d] = dateStr.split('-');
+            const thMonths = ["ม.ค.", "ก.พ.", "มี.ค.", "เม.ย.", "พ.ค.", "มิ.ย.", "ก.ค.", "ส.ค.", "ก.ย.", "ต.ค.", "พ.ย.", "ธ.ค."];
+            return `${parseInt(d)} ${thMonths[parseInt(m)-1]} ${parseInt(y)+543}`;
+        }
+
+        function handleLeaveTypeChange(val) {
+            const swapContainer = document.getElementById('swapDateContainer');
+            const swapLabel = document.getElementById('swapDateLabel');
+            const swapInput = document.getElementById('swapDate');
+            
+            if (val === 'สลับวันหยุด') {
+                swapContainer.classList.remove('hidden');
+                swapContainer.className = 'mb-4 bg-amber-50 p-3 rounded-xl border border-amber-200 transition-all';
+                swapLabel.className = 'block text-sm font-medium text-amber-800 mb-1';
+                swapInput.className = 'w-full p-2 border border-amber-300 rounded-lg focus:ring-2 focus:ring-amber-500 outline-none bg-white text-sm';
+                swapLabel.textContent = 'เลือกวันหยุดเดิมที่สลับมา (วันที่ไปทำงานแทน)';
+                swapInput.required = true;
+            } else if (val === 'ใช้วันหยุดนักขัตฤกษ์') {
+                swapContainer.classList.remove('hidden');
+                swapContainer.className = 'mb-4 bg-purple-50 p-3 rounded-xl border border-purple-200 transition-all';
+                swapLabel.className = 'block text-sm font-medium text-purple-800 mb-1';
+                swapInput.className = 'w-full p-2 border border-purple-300 rounded-lg focus:ring-2 focus:ring-purple-500 outline-none bg-white text-sm';
+                swapLabel.textContent = 'เลือกวันหยุดนักขัตฤกษ์เดิม';
+                swapInput.required = true;
+            } else {
+                swapContainer.classList.add('hidden');
+                swapInput.required = false;
+                swapInput.value = '';
+            }
+        }
+
+        function openModal(dateStr, dayNum, dayOfWeek) {
+            selectedDate = dateStr;
+            const [y, m, d] = dateStr.split('-');
+            
+            document.getElementById('selectedDateDisplay').textContent = `${parseInt(d)} ${monthNames[parseInt(m)-1]} ${parseInt(y)+543}`;
+            
+            const holidayEl = document.getElementById('holidayDisplay');
+            if (PUBLIC_HOLIDAYS[dateStr]) {
+                holidayEl.textContent = `★ ${PUBLIC_HOLIDAYS[dateStr]}`;
+                holidayEl.classList.remove('hidden');
+            } else if (currentUser.regularDaysOff.includes(dayOfWeek)) {
+                holidayEl.textContent = `(วันหยุดประจำสัปดาห์ของคุณ)`;
+                holidayEl.classList.remove('hidden', 'text-red-500');
+                holidayEl.classList.add('text-gray-500');
+            } else {
+                holidayEl.classList.add('hidden');
+                holidayEl.classList.remove('text-gray-500');
+                holidayEl.classList.add('text-red-500');
+            }
+            
+            if (currentUser.role !== 'admin') document.getElementById('empNameSelect').value = currentUser.id;
+            else document.getElementById('empNameSelect').value = "";
+            document.getElementById('leaveReason').value = '';
+            document.getElementsByName('leaveType').forEach(r => r.checked = false);
+            handleLeaveTypeChange('');
+
+            renderLeaveList(dateStr);
+
+            const modal = document.getElementById('leaveModal');
+            const overlay = document.getElementById('modalOverlay');
+            modal.classList.remove('hidden');
+            overlay.classList.remove('hidden');
+            setTimeout(() => {
+                modal.classList.remove('modal-enter');
+                modal.classList.add('modal-enter-active');
+                overlay.classList.remove('opacity-0');
+                overlay.classList.add('opacity-100');
+            }, 10);
+        }
+
+        function renderLeaveList(dateStr) {
+            const listContainer = document.getElementById('existingLeavesContainer');
+            const listUl = document.getElementById('existingLeavesList');
+            listUl.innerHTML = '';
+            
+            if (leavesData[dateStr] && leavesData[dateStr].length > 0) {
+                listContainer.classList.remove('hidden');
+                leavesData[dateStr].forEach((rawLeave) => {
+                    const leave = parseLeaveData(rawLeave);
+                    const li = document.createElement('li');
+                    
+                    let colorClass = leave.type === 'ลาป่วย' ? 'text-red-700 bg-red-50 border-red-100' : 
+                                     (leave.type === 'ลากิจ' ? 'text-blue-700 bg-blue-50 border-blue-100' : 
+                                     (leave.type === 'ลาพักร้อน' ? 'text-green-700 bg-green-50 border-green-100' : 
+                                     (leave.type === 'ใช้วันหยุดนักขัตฤกษ์' ? 'text-purple-700 bg-purple-50 border-purple-100' : 
+                                     'text-amber-700 bg-amber-50 border-amber-100')));
+                    
+                    const canDelete = (currentUser.id === leave.userId) || (currentUser.role === 'admin');
+                    const deleteBtnHtml = canDelete ? 
+                        `<button type="button" onclick="deleteLeave('${dateStr}', '${leave.id}')" class="text-gray-400 hover:text-red-500 p-1"><i class="ph ph-trash"></i></button>` : '';
+
+                    li.className = `flex justify-between items-start p-3 rounded-xl border text-sm ${colorClass}`;
+                    li.innerHTML = `
+                        <div class="flex-1">
+                            <div class="flex items-center">
+                                <span class="font-semibold">${leave.name}</span>
+                                <span class="ml-2 px-1.5 py-0.5 rounded text-[10px] font-bold bg-white/60 border border-current opacity-80">${leave.type}</span>
+                            </div>
+                            ${leave.displayReason ? `<div class="text-xs mt-1 opacity-80 whitespace-pre-line">${leave.displayReason}</div>` : ''}
+                        </div>
+                        ${deleteBtnHtml}
+                    `;
+                    listUl.appendChild(li);
+                });
+            } else {
+                listContainer.classList.add('hidden');
+            }
+        }
+
+        function closeModal() {
+            const modal = document.getElementById('leaveModal');
+            const overlay = document.getElementById('modalOverlay');
+            modal.classList.remove('modal-enter-active');
+            modal.classList.add('modal-exit-active');
+            overlay.classList.remove('opacity-100');
+            overlay.classList.add('opacity-0');
+            setTimeout(() => {
+                modal.classList.add('hidden');
+                modal.classList.remove('modal-exit-active');
+                modal.classList.add('modal-enter');
+                overlay.classList.add('hidden');
+            }, 300);
+        }
+
+        function showToast(msg) {
+            const toast = document.getElementById('toast');
+            toast.textContent = msg;
+            toast.classList.remove('opacity-0');
+            toast.classList.add('opacity-100');
+            setTimeout(() => {
+                toast.classList.remove('opacity-100');
+                toast.classList.add('opacity-0');
+            }, 3000);
+        }
+
+        async function saveLeave(event) {
+            event.preventDefault();
+            
+            const selectedUserId = document.getElementById('empNameSelect').value;
+            if(!selectedUserId) { alert("กรุณาเลือกชื่อพนักงาน"); return; }
+            
+            const selectedEmp = EMPLOYEES.find(e => e.id === selectedUserId);
+            const type = document.querySelector('input[name="leaveType"]:checked')?.value;
+            if(!type) return;
+
+            const btn = document.getElementById('submitBtn');
+            const originalText = btn.innerHTML;
+            btn.innerHTML = '<i class="ph ph-spinner animate-spin mr-2"></i> กำลังบันทึกลง Sheet...';
+            btn.disabled = true;
+
+            let reason = document.getElementById('leaveReason').value;
+            let hiddenSwapTag = '';
+            
+            if (type === 'สลับวันหยุด' || type === 'ใช้วันหยุดนักขัตฤกษ์') {
+                const swapDateVal = document.getElementById('swapDate').value;
+                const targetDateStr = formatDateThai(selectedDate);
+                const sourceDateStr = formatDateThai(swapDateVal);
+                
+                let autoNote = "";
+                if (type === 'สลับวันหยุด') {
+                    autoNote = `สลับจากวันที่ ${sourceDateStr} เป็นวันที่ ${targetDateStr}`;
+                } else {
+                    autoNote = `ใช้วันหยุดนักขัตฤกษ์ของวันที่ ${sourceDateStr} มาหยุดวันที่ ${targetDateStr}`;
+                }
+                reason = reason ? `${autoNote} | หมายเหตุ: ${reason}` : autoNote;
+
+                if (swapDateVal) {
+                    hiddenSwapTag = `[SWAP:${swapDateVal}]`;
+                }
+            }
+            
+            const recordId = 'L-' + Date.now().toString(36) + Math.random().toString(36).substr(2, 5);
+            const newLeave = { 
+                id: recordId,
+                date: selectedDate, 
+                userId: selectedEmp.id,
+                name: selectedEmp.name.split(' ')[0], 
+                type: type, 
+                reason: hiddenSwapTag + reason,
+                action: 'add'
+            };
+
+            try {
+                // ส่งข้อมูลไปบันทึก
+                const response = await fetch(GOOGLE_APP_SCRIPT_URL, {
+                    method: 'POST',
+                    body: JSON.stringify(newLeave),
+                    headers: { 'Content-Type': 'text/plain;charset=utf-8' }
+                });
+                const result = await response.json();
+                
+                if (result.status === 'success') {
+                    // ถ้าสำเร็จ ให้ดึงข้อมูลชุดใหม่ทั้งหมดจาก Sheet เพื่อกันพลาด (และกัน Cache)
+                    const refreshResp = await fetch(GOOGLE_APP_SCRIPT_URL + "?action=get&t=" + new Date().getTime());
+                    const refreshResult = await refreshResp.json();
+                    if(refreshResult.data) leavesData = refreshResult.data;
+
+                    btn.innerHTML = originalText;
+                    btn.disabled = false;
+                    renderLeaveList(selectedDate); 
+                    renderCalendar(); 
+                    
+                    document.getElementById('leaveReason').value = ''; 
+                    document.getElementsByName('leaveType').forEach(r => r.checked = false);
+                    handleLeaveTypeChange(''); 
+                    showToast('บันทึกข้อมูลสำเร็จ!');
+                } else {
+                    throw new Error("Failed");
+                }
+            } catch (e) { 
+                console.log('Error:', e); 
+                alert("เกิดข้อผิดพลาดในการบันทึกข้อมูล");
+                btn.innerHTML = originalText;
+                btn.disabled = false;
+            }
+        }
+
+        async function deleteLeave(dateStr, leaveId) {
+            if(!confirm("ต้องการลบรายการนี้ใช่หรือไม่?")) return;
+            
+            showToast('กำลังส่งคำสั่งลบ...');
+
+            try {
+                const response = await fetch(GOOGLE_APP_SCRIPT_URL, {
+                    method: 'POST',
+                    body: JSON.stringify({ action: 'delete', id: leaveId, date: dateStr }),
+                    headers: { 'Content-Type': 'text/plain;charset=utf-8' }
+                });
+                const result = await response.json();
+
+                if (result.status === 'deleted') {
+                    // ดึงข้อมูลชุดใหม่จาก Sheet หลังจากลบเสร็จ
+                    const refreshResp = await fetch(GOOGLE_APP_SCRIPT_URL + "?action=get&t=" + new Date().getTime());
+                    const refreshResult = await refreshResp.json();
+                    if(refreshResult.data) leavesData = refreshResult.data;
+
+                    renderLeaveList(dateStr);
+                    renderCalendar();
+                    showToast('ลบรายการสำเร็จ');
+                } else {
+                    throw new Error("Failed");
+                }
+            } catch (e) { 
+                console.log('Error:', e); 
+                alert("เกิดข้อผิดพลาดในการลบข้อมูล");
+            }
+        }
+
+        // เริ่มต้นการทำงาน
+        initApp();
+
+    </script>
+</body>
+</html>
